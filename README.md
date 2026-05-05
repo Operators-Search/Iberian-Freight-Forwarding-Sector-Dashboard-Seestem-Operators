@@ -84,16 +84,19 @@ Use:
 NEXT_PUBLIC_SUPABASE_URL=https://iaquoxyiyydkmbnynixe.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+CRON_SECRET=...
 ```
 
 Notes:
 
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` is used by the frontend for public read access
 - `SUPABASE_SERVICE_ROLE_KEY` is used only by `scripts/import-data.ts`
+- `CRON_SECRET` protects the `/api/keepalive` endpoint used by Vercel Cron
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` in Vercel client-side settings
 - Vercel only needs:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `CRON_SECRET`
 
 ## SQL to paste into Supabase
 
@@ -170,6 +173,20 @@ pnpm import:data
 2. Add:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Deploy
+   - `CRON_SECRET`
+3. Deploy or redeploy the project
+4. Check `Settings -> Cron Jobs` in Vercel and confirm `/api/keepalive` is scheduled once per day
 
 Do not add `SUPABASE_SERVICE_ROLE_KEY` to the frontend deployment unless you intentionally run the importer in a secure server-side context.
+
+## Supabase keepalive
+
+The project includes a protected `GET /api/keepalive` route. Vercel Cron calls it daily using the `Authorization: Bearer ${CRON_SECRET}` header.
+
+The route performs a minimal Supabase query:
+
+```ts
+select("bvd_code").limit(1)
+```
+
+The cron schedule is configured in `vercel.json` as `0 5 * * *`, which is compatible with Vercel Hobby limits.
